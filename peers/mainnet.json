@@ -1,0 +1,212 @@
+[
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.protonnz.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "api.protonnz.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p1.protonnz.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p2.protonnz.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.totalproton.tech:9831"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.p2p.eosusa.io:9879"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.protonuk.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "protonp2p.eoscafeblock.com:9130"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "mainnet-p2p.xprlabs.org:9859"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.alvosec.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "api.snipverse.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "mainnet.brotonbp.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-xpr.blocksforge.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.cryptolions.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "mainnet-p2p.cerebro.host:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "bp-p2p.storex.io:9999"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-protonmain.saltant.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton-seed.eosiomadrid.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "api.cats.vote:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "protonp2p.blocksindia.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "xpr-mainnet-p2p.bloxprod.io:19876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "mainchain.simpleblock.org:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "peer-proton.nodeone.network:9874"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.eu.eosamsterdam.net:9103"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.chaininfra.net:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.proton.detroitledger.tech:1337"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.eosrio.io:8142"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.luminaryvisn.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "api.homebloksbp.com:9877"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.madblocks.tech:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.xprdata.org:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-xpr-main.danemarkbp.com:9877"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "api.rockerone.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "proton.genereos.io:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-mainnet.xprcore.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-proton.eosarabia.net:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-mainnet.artwebin.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "mainxpr-p2p.cindro.net:9870"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "protonp2p.ledgerwise.io:23877"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-energy.metalxpr.com:9876"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p-xpr.a-dex.xyz:9976"
+  },
+  {
+    "type": "p2p",
+    "status": "active",
+    "url": "p2p.turtlebp.online:19876"
+  }
+]
