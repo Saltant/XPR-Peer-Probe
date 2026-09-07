@@ -46,10 +46,10 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
-VERSION = "2.0.0-rc2"
+VERSION = "2.0.0-rc3"
 GIB = 1024 ** 3
 SCRIPT_DIR = Path(__file__).resolve().parent
-LEAP_VERSION = "5.0.3"  # Explicitly pinned; never install GitHub's arbitrary 'latest'.
+LEAP_VERSION = "5.0.3"  # Pinned fallback installer version; not a runtime compatibility requirement.
 LEAP_URL = ("https://github.com/AntelopeIO/leap/releases/download/v5.0.3/"
             "leap_5.0.3_amd64.deb")
 MAINTAINER_KEYS = ["https://github.com/arhag.gpg", "https://github.com/ericpassmore.gpg",
@@ -359,10 +359,11 @@ def memory_available() -> int | None:
             return None
 
 
-def check_resources(root: Path, args: argparse.Namespace) -> dict:
+def check_resources(root: Path, args: argparse.Namespace, announce: bool = True) -> dict:
     free = shutil.disk_usage(root).free
     ram = memory_available()
-    say(f"Free disk: {human_bytes(free)}; available RAM: {human_bytes(ram) if ram is not None else 'unknown'}")
+    if announce:
+        say(f"Free disk: {human_bytes(free)}; available RAM: {human_bytes(ram) if ram is not None else 'unknown'}")
     problems = []
     if free < args.min_free_gib * GIB:
         problems.append(f"need at least {args.min_free_gib:g} GiB free disk")
@@ -714,14 +715,11 @@ def ensure_nodeos(root: Path, args: argparse.Namespace) -> tuple[Path, str]:
     if result.returncode:
         raise ProbeError(f'nodeos cannot execute: {result.stdout[-2000:]}')
     version = result.stdout.strip()
-    # --full-version normally returns a build suffix, e.g.
-    # v5.0.3-d133c6413ce8ce2e96096a0513ec25b4a8dbe837. Compare the
-    # semantic version, not the complete build string. A leading 'v' is not a
-    # regex word boundary, so the previous \b5\.0\.3\b check incorrectly
-    # warned for the normal official version string.
-    selected_semver = extract_semver(version)
-    if selected_semver != LEAP_VERSION:
-        say(f'WARNING: this probe was designed around Leap {LEAP_VERSION}; selected version: {version}')
+    # Do not gate compatible Antelope/Leap-derived builds by a version string.
+    # Forks commonly append build hashes or use their own release numbering.
+    # We report the version and validate the capabilities this probe actually
+    # needs instead: snapshot/config/data-dir options at preflight and the
+    # chain/net RPCs when the isolated diagnostic node starts.
     help_result = run_command([str(candidate), '--help'])
     for option in ('--snapshot', '--data-dir', '--config-dir'):
         if help_result.returncode or option not in help_result.stdout:
@@ -1040,7 +1038,7 @@ plugin = eosio::net_api_plugin
         finally:
             conn.close()
 
-    def wait_ready(self) -> dict:
+    def wait_ready(self, quiet: bool = False) -> dict:
         deadline = time.monotonic() + self.args.api_start_timeout
         last = ''
         next_notice = time.monotonic() + 10
@@ -1059,7 +1057,7 @@ plugin = eosio::net_api_plugin
                 return info
             except ProbeError as exc:
                 last = str(exc)
-            if time.monotonic() > next_notice:
+            if not quiet and time.monotonic() > next_notice:
                 say('  Restoring snapshot; waiting for local API...')
                 next_notice = time.monotonic() + 10
             time.sleep(.2)
@@ -1132,7 +1130,7 @@ def new_result(endpoint: str, mode: str, phase: str, round_number: int) -> dict:
 def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: Path,
                baseline: dict | None, row: dict, target: tuple[str, int],
                proxy: tuple[str, int] | None, credentials: tuple[str, str] | None,
-               identifier: str) -> dict:
+               identifier: str, progress: Callable[[str], None] | None = None) -> dict:
     data_dir = run_dir / 'data' / identifier
     config_dir = run_dir / 'configs' / identifier
     log_path = run_dir / 'logs' / f'{identifier}.log'
@@ -1142,16 +1140,17 @@ def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: 
     connected = False
     tail = LogTail(log_path)
     try:
+        if progress:
+            progress('RESTORE')
         restore_start = time.monotonic()
         node.start(data_dir, config_dir, log_path, snapshot)
-        initial = node.wait_ready()
+        initial = node.wait_ready(quiet=progress is not None)
         row['restore_seconds'] = time.monotonic() - restore_start
         meta = validate_snapshot_state(initial, args.network, baseline)
         row.update(start_head=meta['head_block_num'], start_lib=meta['last_irreversible_block_num'],
                    snapshot_head_equals_lib=True)
-        if baseline is None:
-            say(f'  Snapshot HEAD/LIB: {meta["head_block_num"]}/{meta["last_irreversible_block_num"]}; '
-                f'block time: {meta["head_block_time"]}')
+        if progress:
+            progress('HANDSHAKE')
         if row['network_mode'] == 'NATIVE_SOCKS5':
             relay = NativeRelay(args.relay_port, proxy, target, args.proxy_timeout, credentials)
             connect_endpoint = relay.start()
@@ -1193,6 +1192,8 @@ def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: 
         available = max(0, row['remote_lib'] - start_head)
         row['available_irreversible_blocks'] = available
         if row['phase'] == 'A':
+            if progress:
+                progress('HOLD')
             until = time.monotonic() + args.phase_a_hold
             while time.monotonic() < until:
                 terminal = tail.read()
@@ -1205,6 +1206,8 @@ def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: 
             row.update(classification='HANDSHAKE_OK', reason='Handshake/short hold only, not a catch-up benchmark.')
             return meta
         row['target_blocks'] = args.catchup_blocks
+        if progress:
+            progress('SYNC')
         if row['lag'] <= 0:
             row.update(classification='NO_HISTORY', reason='Peer head is not ahead of the snapshot.')
             return meta
@@ -1229,6 +1232,8 @@ def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: 
             gained = max(0, current_head - start_head)
             row.update(gained_blocks=gained, elapsed_seconds=observed-started,
                        blocks_per_second=gained/max(.001, observed-started), end_head=current_head)
+            if progress:
+                progress('SYNC')
             if gained >= args.catchup_blocks:
                 on_time = observed - started <= args.catchup_timeout
                 row.update(classification='GOOD' if on_time else 'SLOW', completed_target=True,
@@ -1279,6 +1284,92 @@ def run_sample(node: Nodeos, args: argparse.Namespace, run_dir: Path, snapshot: 
                    finished_at=utcnow())
         if not args.keep_temp and node.process is None:
             remove_owned_data(data_dir, run_dir)
+
+
+
+def _short_text(value: str, width: int) -> str:
+    value = str(value)
+    if len(value) <= width:
+        return value
+    if width <= 3:
+        return value[:width]
+    return value[:width - 3] + '...'
+
+
+def _sample_tag(row: dict) -> str:
+    return f'{row.get("phase", "?")}{row.get("round", "?")}'
+
+
+def _path_tag(row: dict) -> str:
+    return 'SOCKS5' if row.get('network_mode') == 'NATIVE_SOCKS5' else 'DIRECT'
+
+
+def _table_line(index: int, row: dict, status: str | None = None) -> str:
+    result = status or str(row.get('classification') or 'NOT_RUN')
+    endpoint = _short_text(str(row.get('endpoint', '-')), 43)
+    blocks = '-'
+    if row.get('target_blocks') or row.get('gained_blocks'):
+        blocks = f'{int(row.get("gained_blocks", 0))}/{int(row.get("target_blocks", 0))}'
+    lag = '-' if row.get('lag') is None else str(row['lag'])
+    hs = '-' if row.get('handshake_ms') is None else f'{row["handshake_ms"]:.1f}'
+    speed = '-' if status in ('RESTORE', 'HANDSHAKE', 'HOLD') else f'{row.get("blocks_per_second", 0.0):.1f}'
+    return (f'{index:>2}  {_sample_tag(row):<4} {endpoint:<43} {_path_tag(row):<7} '
+            f'{_short_text(result, 20):<20} {speed:>8} {blocks:>12} {lag:>8} {hs:>9}')
+
+
+class LiveResultsTable:
+    """Compact terminal table; only the current sample is redrawn in-place."""
+
+    def __init__(self) -> None:
+        self.tty = sys.stdout.isatty() and os.environ.get('TERM', '') != 'dumb'
+        self.current = False
+        self.header_printed = False
+        self.last_status = ''
+        self.last_render = 0.0
+
+    def header(self) -> None:
+        if self.header_printed:
+            return
+        say('\n=== Live test results ===')
+        say(f'{"#":>2}  {"test":<4} {"endpoint":<43} {"path":<7} '
+            f'{"result":<20} {"blk/s":>8} {"blocks":>12} {"lag":>8} {"hs/ms":>9}')
+        say('-' * 124)
+        self.header_printed = True
+
+    def update(self, index: int, row: dict, status: str) -> None:
+        self.header()
+        if not self.tty:
+            return
+        now = time.monotonic()
+        # Catch-up polling can run at 10 Hz; refreshing the terminal that often
+        # adds noise without useful information. State changes render
+        # immediately, steady-state SYNC updates are capped at 4 Hz.
+        if status == self.last_status and now - self.last_render < 0.25:
+            return
+        line = _table_line(index, row, status)
+        sys.stdout.write('\r\033[2K' + line)
+        sys.stdout.flush()
+        self.current = True
+        self.last_status = status
+        self.last_render = now
+
+    def finish(self, index: int, row: dict) -> None:
+        self.header()
+        line = _table_line(index, row)
+        if self.tty:
+            sys.stdout.write('\r\033[2K' + line + '\n')
+            sys.stdout.flush()
+            self.current = False
+            self.last_status = ''
+            self.last_render = 0.0
+        else:
+            say(line)
+
+    def newline(self) -> None:
+        if self.tty and self.current:
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+            self.current = False
 
 
 def sorted_rows(rows: list[dict]) -> list[dict]:
@@ -1369,16 +1460,15 @@ def write_reports(run_dir: Path, report: dict, args: argparse.Namespace) -> None
 
 def print_ranking(rows: list[dict]) -> None:
     say('\n=== Final ranking (Phase B) ===')
-    say(f'{"endpoint":<43} {"path":<13} {"class":<21} {"blk/s":>8} {"blocks":>12} {"lag":>8} {"hs/ms":>9}')
+    say(f'{"#":>2}  {"test":<4} {"endpoint":<43} {"path":<7} '
+        f'{"result":<20} {"blk/s":>8} {"blocks":>12} {"lag":>8} {"hs/ms":>9}')
+    say('-' * 124)
+    rank = 0
     for row in sorted_rows(rows):
         if row['phase'] != 'B':
             continue
-        hs = '-' if row['handshake_ms'] is None else f'{row["handshake_ms"]:.1f}'
-        lag = '-' if row['lag'] is None else str(row['lag'])
-        path = 'SOCKS5' if row['network_mode'] == 'NATIVE_SOCKS5' else 'DIRECT'
-        blocks = f'{row["gained_blocks"]}/{row["target_blocks"]}'
-        say(f'{row["endpoint"]:<43} {path:<13} {row["classification"]:<21} '
-            f'{row["blocks_per_second"]:>8.1f} {blocks:>12} {lag:>8} {hs:>9}')
+        rank += 1
+        say(_table_line(rank, row))
 
 
 def interactive_setup(args: argparse.Namespace) -> None:
@@ -1389,6 +1479,10 @@ def interactive_setup(args: argparse.Namespace) -> None:
     if choice not in ('1','2','mainnet','testnet'):
         raise ProbeError('Choose 1/mainnet or 2/testnet.')
     args.network = 'mainnet' if choice in ('1','mainnet') else 'testnet'
+    if not args.nodeos_bin:
+        nodeos_path = input(f'nodeos executable (empty = auto-detect; missing = offer private Leap {LEAP_VERSION}): ').strip()
+        if nodeos_path:
+            args.nodeos_bin = nodeos_path
     if not args.native_socks5:
         proxy = input('SOCKS5 host:port (empty = DIRECT): ').strip()
         if proxy:
@@ -1601,6 +1695,7 @@ def execute(args: argparse.Namespace) -> int:
             phases = ['A','B'] if args.with_phase_a else ['B']
             if not args.with_phase_a:
                 say('Phase A skipped: Phase B already includes handshake validation.')
+            live_table = LiveResultsTable()
             for round_number in range(1, args.rounds+1):
                 for peer in peers:
                     host, port = parse_endpoint(peer)
@@ -1613,17 +1708,20 @@ def execute(args: argparse.Namespace) -> int:
                             row['resolved_ips'] = ips
                             row['selected_ip'] = ips[0] if ips else None
                             report['samples'].append(row)
-                            say(f'[{index}] Phase {phase} round {round_number}/{args.rounds}: {peer} via {mode}')
+                            live_table.update(index, row, 'RESTORE')
                             try:
                                 if dns_error and not (mode == 'NATIVE_SOCKS5' and args.relay_remote_dns):
                                     row.update(classification='DNS_ERROR', reason=dns_error, finished_at=utcnow())
                                 else:
-                                    check_resources(root, args)
+                                    check_resources(root, args, announce=False)
                                     # Remote DNS is an explicit exception: actual foreign destination IP is unknown.
                                     use_host = host if mode == 'NATIVE_SOCKS5' and args.relay_remote_dns else ips[0]
                                     identifier = f'{index:04d}-{phase.lower()}-{mode.lower()}'
-                                    baseline = run_sample(node, args, run_dir, snapshot, baseline, row,
-                                                          (use_host, port), proxy, credentials, identifier)
+                                    baseline = run_sample(
+                                        node, args, run_dir, snapshot, baseline, row,
+                                        (use_host, port), proxy, credentials, identifier,
+                                        progress=lambda status, i=index, r=row: live_table.update(i, r, status),
+                                    )
                                     report['snapshot'] = baseline
                             except KeyboardInterrupt:
                                 row.update(classification='INTERRUPTED', reason='Operator interrupted the test.')
@@ -1631,8 +1729,7 @@ def execute(args: argparse.Namespace) -> int:
                             finally:
                                 peak_data = max(peak_data, row.get('data_disk_bytes_after_stop', 0))
                                 write_reports(run_dir, report, args)
-                            say(f'  {row["classification"]}: {row["gained_blocks"]}/{row["target_blocks"]} '
-                                f'blocks, {row["blocks_per_second"]:.1f} blk/s; {row["reason"]}')
+                                live_table.finish(index, row)
                             time.sleep(args.pause)
             report['state'] = 'COMPLETE'
         except KeyboardInterrupt:
@@ -1640,6 +1737,8 @@ def execute(args: argparse.Namespace) -> int:
             exit_code = 130
         except Exception as exc:
             report.update(state='FAILED', error=str(exc))
+            if 'live_table' in locals():
+                live_table.newline()
             say(f'ERROR: {exc}')
             exit_code = 2
         finally:
