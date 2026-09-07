@@ -6,7 +6,7 @@ XPR Peer Probe starts an isolated diagnostic `nodeos`, restores a snapshot, chec
 
 Each endpoint starts from the **same snapshot within a run**. Production configuration, keys, services and data directories are not edited.
 
-> \*\*Release candidate: `2.0.0-rc1`.\*\* The earlier v1.5 workflow was exercised by operators with Leap 5.0.3. This refactored version has automated local tests, including a mock nodeos and SOCKS5 server; it still needs a real-node smoke test before being tagged as a stable release. See \[Testing](docs/TESTING.md).
+> **Release candidate: `2.0.0-rc1`.** The earlier v1.5 workflow was exercised by operators with Leap 5.0.3. This refactored version has automated local tests, including a mock nodeos and SOCKS5 server; it still needs a real-node smoke test before being tagged as a stable release.
 
 ## Quick start
 
@@ -15,16 +15,16 @@ Download or clone this repository, then run commands from its directory.
 ### An existing nodeos is installed
 
 ```bash
-python3 xpr\_peer\_probe.py --network mainnet --check
-python3 xpr\_peer\_probe.py --network mainnet
+python3 xpr_peer_probe.py --network mainnet --check
+python3 xpr_peer_probe.py --network mainnet
 ```
 
 ### A fresh Ubuntu host
 
 ```bash
-chmod +x setup.sh xpr\_peer\_probe.py
+chmod +x setup.sh xpr_peer_probe.py
 ./setup.sh --network mainnet
-./xpr\_peer\_probe.py --network mainnet
+./xpr_peer_probe.py --network mainnet
 ```
 
 `setup.sh` checks Python and CA certificates, then runs the dependency checker. Missing installation helpers and a private Leap installation are offered **with confirmation**. It does not start a production service, modify `/usr/bin/nodeos`, or upgrade an existing nodeos.
@@ -32,29 +32,29 @@ chmod +x setup.sh xpr\_peer\_probe.py
 Run without arguments for a small interactive setup:
 
 ```bash
-./xpr\_peer\_probe.py
+./xpr_peer_probe.py
 ```
 
 ### Switch networks
 
 ```bash
-./xpr\_peer\_probe.py --network mainnet
-./xpr\_peer\_probe.py --network testnet
+./xpr_peer_probe.py --network mainnet
+./xpr_peer_probe.py --network testnet
 ```
 
 The network selects its own **chain ID, snapshot source, peer file, ports, cache and reports**. A Mainnet snapshot supplied with `--network testnet` stops the run as a **local configuration error**, before testing any peer.
 
 ## Requirements
 
-|Component|Requirement|
-|-|-|
-|Operating system|Linux. Automated Leap installation is restricted to **Ubuntu 22.04/24.04, amd64**. Other Linux systems require a compatible manually installed nodeos.|
-|Python|**3.10+**, standard library only. No `pip install` step.|
-|Blockchain binary|A compatible Antelope **Leap `nodeos`**. The reference/pinned installer version is **5.0.3**, not an arbitrary latest release. `--nodeos-bin` selects another executable.|
-|Network|Outbound P2P TCP; HTTPS for automatic downloads. An existing reachable SOCKS5 service is required only for relay mode.|
-|Disk|Default guard: **8 GiB free** before a restore and as a reserve during snapshot downloads. Allocate more for retained snapshots, repeated runs or `--keep-temp`.|
-|Memory|Default guard: **4 GiB available**, not merely installed. This is a preliminary safety check, **not a guarantee that any snapshot will fit**. Leave substantial additional headroom on production hosts.|
-|Privileges|Normal probing uses an unprivileged account. Only explicitly approved system-package installation may need `sudo`.|
+| Component | Requirement |
+|---|---|
+| Operating system | Linux. Automated Leap installation is restricted to **Ubuntu 22.04/24.04, amd64**. Other Linux systems require a compatible manually installed nodeos. |
+| Python | **3.10+**, standard library only. No `pip install` step. |
+| Blockchain binary | A compatible Antelope **Leap `nodeos`**. The reference/pinned installer version is **5.0.3**, not an arbitrary latest release. `--nodeos-bin` selects another executable. |
+| Network | Outbound P2P TCP; HTTPS for automatic downloads. An existing reachable SOCKS5 service is required only for relay mode. |
+| Disk | Default guard: **8 GiB free** before a restore and as a reserve during snapshot downloads. Allocate more for retained snapshots, repeated runs or `--keep-temp`. |
+| Memory | Default guard: **4 GiB available**, not merely installed. This is a preliminary safety check, **not a guarantee that any snapshot will fit**. Leave substantial additional headroom on production hosts. |
+| Privileges | Normal probing uses an unprivileged account. Only explicitly approved system-package installation may need `sudo`. |
 
 `curl`, `wget`, `jq`, `cleos`, `proxychains`, Docker, Hyperion, Redis and RabbitMQ are **not dependencies** of the probe. `dpkg-deb` and GnuPG are needed only for the optional private Leap installation.
 
@@ -87,10 +87,10 @@ peers/testnet.json
 
 They are loaded relative to the script directory; the workspace is relative to the **current working directory**, unless `--workspace` is supplied. Seed lists are candidates, **not promises of current availability**. See [peer-list provenance](peers/README.md).
 
-The original JSON format is supported; extra metadata such as `location` or `node\_type` is ignored:
+The original JSON format is supported; extra metadata such as `location` or `node_type` is ignored:
 
 ```json
-\[
+[
   {"type": "p2p", "status": "active", "url": "mainnet.brotonbp.com:9876"},
   {"type": "p2p", "status": "active", "url": "proton.protonuk.io:9876"}
 ]
@@ -101,11 +101,11 @@ String arrays, one `host:port` per line, and `p2p-peer-address = host:port` line
 Use a custom file or specific endpoints:
 
 ```bash
-./xpr\_peer\_probe.py --network mainnet --peers-file ./my-mainnet-peers.json
+./xpr_peer_probe.py --network mainnet --peers-file ./my-mainnet-peers.json
 
-./xpr\_peer\_probe.py --network mainnet --peer mainnet.brotonbp.com:9876
+./xpr_peer_probe.py --network mainnet --peer mainnet.brotonbp.com:9876
 
-./xpr\_peer\_probe.py --network mainnet \\
+./xpr_peer_probe.py --network mainnet \
   --peers mainnet.brotonbp.com:9876,proton.protonuk.io:9876
 ```
 
@@ -114,7 +114,7 @@ Use a custom file or specific endpoints:
 Preview without nodeos or network testing:
 
 ```bash
-./xpr\_peer\_probe.py --network testnet --list-peers
+./xpr_peer_probe.py --network testnet --list-peers
 ```
 
 ## Snapshots and reproducibility
@@ -123,10 +123,10 @@ A missing snapshot is downloaded from the selected network's EOSUSA source. Both
 
 ```bash
 # Fetch the source again. "Latest" may still be the same snapshot.
-./xpr\_peer\_probe.py --network mainnet --refresh-snapshot
+./xpr_peer_probe.py --network mainnet --refresh-snapshot
 
 # Use an exact local snapshot; do not download another one.
-./xpr\_peer\_probe.py --network testnet --snapshot /path/to/testnet-snapshot.bin
+./xpr_peer_probe.py --network testnet --snapshot /path/to/testnet-snapshot.bin
 ```
 
 `--snapshot-sha256 HASH` verifies a known digest. A checksum proves file equality, not the trustworthiness of its provider. Use trusted snapshot sources. Archives with unsafe paths, links, devices, multiple `.bin` files or oversized contents are rejected.
@@ -138,9 +138,9 @@ For comparison between hosts or routes, keep the **snapshot SHA-256, target bloc
 No separate relay process or ProxyChains installation is required:
 
 ```bash
-./xpr\_peer\_probe.py --network mainnet \\
-  --snapshot /path/to/mainnet-snapshot.bin \\
-  --native-socks5 127.0.0.1:10809 \\
+./xpr_peer_probe.py --network mainnet \
+  --snapshot /path/to/mainnet-snapshot.bin \
+  --native-socks5 127.0.0.1:10809 \
   --peers mainnet.brotonbp.com:9876,protonp2p.blocksindia.com:9876
 ```
 
@@ -153,9 +153,9 @@ The probe **does not install or configure Xray**. A SOCKS5 address alone does no
 Run both paths automatically:
 
 ```bash
-./xpr\_peer\_probe.py --network mainnet \\
-  --snapshot /path/to/mainnet-snapshot.bin \\
-  --native-socks5 127.0.0.1:10809 --compare \\
+./xpr_peer_probe.py --network mainnet \
+  --snapshot /path/to/mainnet-snapshot.bin \
+  --native-socks5 127.0.0.1:10809 --compare \
   --peers mainnet.brotonbp.com:9876,protonp2p.blocksindia.com:9876
 ```
 
@@ -165,21 +165,21 @@ SOCKS5 applies to diagnostic P2P only. Snapshot/package downloads do not use thi
 
 ## Reading the results
 
-|Result|Meaning|
-|-|-|
-|`GOOD`|Correct-network handshake and the **entire requested target** observed within the configured catch-up budget. This is not a long-term uptime guarantee.|
-|`SLOW`|Valid handshake, but target was not completed in time or local HEAD stopped progressing. Read `reason` and the log.|
-|`PEER\_CLOSED`|The P2P connection was rejected/closed. Slots, duplicate connections, source-IP policy and overload are possible; this does **not** prove the node is offline.|
-|`SILENT`|No valid Antelope handshake before the deadline. This label alone does **not** prove TCP established.|
-|`WRONG\_CHAIN`|Received chain ID mismatch or a remote `go\_away` wrong-chain reason. Evidence distinguishes the two.|
-|`CONNECT\_FAIL` / `DNS\_ERROR`|Transport connection or local name resolution failed.|
-|`PROXY\_ERROR`|Native relay/SOCKS setup or forwarding failed. Not an endpoint-health verdict.|
-|`NO\_HISTORY`|Peer's advertised head is not ahead of the snapshot.|
-|`INSUFFICIENT\_HISTORY`|Advertised LIB does not leave enough irreversible blocks ahead for the full target. Use an older snapshot or intentionally smaller target. This does not prove retention depth.|
-|`LOCAL\_ERROR` / `INTERRUPTED`|Local runner/configuration/runtime problem or operator interruption. Never classify these as dead remote peers.|
-|`HANDSHAKE\_OK`|Optional Phase A only: handshake and short hold succeeded, without a throughput verdict.|
+| Result | Meaning |
+|---|---|
+| `GOOD` | Correct-network handshake and the **entire requested target** observed within the configured catch-up budget. This is not a long-term uptime guarantee. |
+| `SLOW` | Valid handshake, but target was not completed in time or local HEAD stopped progressing. Read `reason` and the log. |
+| `PEER_CLOSED` | The P2P connection was rejected/closed. Slots, duplicate connections, source-IP policy and overload are possible; this does **not** prove the node is offline. |
+| `SILENT` | No valid Antelope handshake before the deadline. This label alone does **not** prove TCP established. |
+| `WRONG_CHAIN` | Received chain ID mismatch or a remote `go_away` wrong-chain reason. Evidence distinguishes the two. |
+| `CONNECT_FAIL` / `DNS_ERROR` | Transport connection or local name resolution failed. |
+| `PROXY_ERROR` | Native relay/SOCKS setup or forwarding failed. Not an endpoint-health verdict. |
+| `NO_HISTORY` | Peer's advertised head is not ahead of the snapshot. |
+| `INSUFFICIENT_HISTORY` | Advertised LIB does not leave enough irreversible blocks ahead for the full target. Use an older snapshot or intentionally smaller target. This does not prove retention depth. |
+| `LOCAL_ERROR` / `INTERRUPTED` | Local runner/configuration/runtime problem or operator interruption. Never classify these as dead remote peers. |
+| `HANDSHAKE_OK` | Optional Phase A only: handshake and short hold succeeded, without a throughput verdict. |
 
-**`lag`** is `remote\_head − snapshot\_head` at handshake, in blocks. It is **not ping**, not the peer's lag behind the live network, and should not be compared across sequential tests as a freshness ranking.
+**`lag`** is `remote_head − snapshot_head` at handshake, in blocks. It is **not ping**, not the peer's lag behind the live network, and should not be compared across sequential tests as a freshness ranking.
 
 **`hs`** is time from `net/connect` to observing a valid handshake through the local API. It includes connection/proxy setup and polling overhead; it is not pure RTT.
 
@@ -217,27 +217,27 @@ Only all-rounds `GOOD` direct candidates enter `p2p-peers.conf`. Proxy-only succ
 
 Press **Ctrl+C once** for graceful shutdown. The probe sends SIGTERM only to its own process group. On a shutdown timeout, it preserves the database and PID metadata rather than sending SIGKILL. Inspect the reported PID/log before another run.
 
-**Isolation is not resource isolation.** Snapshot restoration, validation, shutdown writes and downloads still compete with production CPU/RAM/disk/network. Do not run a large benchmark on a busy producer without headroom. Do not expose the diagnostic `net\_api\_plugin` publicly. Avoid repeated rapid retries against endpoints rejecting connections.
+**Isolation is not resource isolation.** Snapshot restoration, validation, shutdown writes and downloads still compete with production CPU/RAM/disk/network. Do not run a large benchmark on a busy producer without headroom. Do not expose the diagnostic `net_api_plugin` publicly. Avoid repeated rapid retries against endpoints rejecting connections.
 
 Reports contain endpoint addresses, proxy address and local filesystem paths, but not SOCKS credential values. Review metadata and logs before publishing them.
 
 ## Useful options
 
-|Option|Purpose|
-|-|-|
-|`--network mainnet\|testnet`|Select profile and isolated network workspace.|
-|`--check`, `--list-peers`|Preflight or preview without a heavy test.|
-|`--peers-file PATH`|Use your own candidate list.|
-|`--peer`, `--peers`, `--exclude-peer`|Select or exclude endpoints.|
-|`--snapshot PATH`, `--refresh-snapshot`|Reuse an exact snapshot or fetch again.|
-|`--native-socks5 HOST:PORT`, `--compare`|Native relay or paired path comparison.|
-|`--catchup-blocks 2000`, `--catchup-timeout 45`|Full target and timing budget.|
-|`--rounds 2`, `--pause 2`|Repeat tests without rapid reconnect loops.|
-|`--nodeos-bin PATH`, `--install-deps`|Select binary or offer private installation.|
-|`--workspace PATH`|Put cache and reports on a disk of your choice.|
-|`--http-port`, `--p2p-port`, `--relay-port`|Override occupied diagnostic ports.|
+| Option | Purpose |
+|---|---|
+| `--network mainnet` / `--network testnet` | Select profile and isolated network workspace. |
+| `--check`, `--list-peers` | Preflight or preview without a heavy test. |
+| `--peers-file PATH` | Use your own candidate list. |
+| `--peer`, `--peers`, `--exclude-peer` | Select or exclude endpoints. |
+| `--snapshot PATH`, `--refresh-snapshot` | Reuse an exact snapshot or fetch again. |
+| `--native-socks5 HOST:PORT`, `--compare` | Native relay or paired path comparison. |
+| `--catchup-blocks 2000`, `--catchup-timeout 45` | Full target and timing budget. |
+| `--rounds 2`, `--pause 2` | Repeat tests without rapid reconnect loops. |
+| `--nodeos-bin PATH`, `--install-deps` | Select binary or offer private installation. |
+| `--workspace PATH` | Put cache and reports on a disk of your choice. |
+| `--http-port`, `--p2p-port`, `--relay-port` | Override occupied diagnostic ports. |
 
-All options, defaults, exit codes and migration details are in [docs/CLI.md](docs/CLI.md). Tests and release limitations are in [docs/TESTING.md](docs/TESTING.md).
+All options, defaults, exit codes and migration details are in [docs/CLI.md](docs/CLI.md). Release-candidate testing notes and limitations are summarized in this README.
 
 ## Development
 
@@ -246,14 +246,13 @@ python3 -m unittest discover -s tests -v
 bash -n setup.sh
 ```
 
-The test suite uses loopback-only mock servers; it does not contact public peers or install packages. `tests/fake\_nodeos.py` is a test double, **not an Antelope implementation**.
+The test suite uses loopback-only mock servers; it does not contact public peers or install packages. `tests/fake_nodeos.py` is a test double, **not an Antelope implementation**.
 
 ## References
 
-* [XPR Mainnet operator guide](https://github.com/XPRNetwork/xpr.start)
-* [XPR Testnet operator guide](https://github.com/XPRNetwork/xpr-testnet.start)
-* [Antelope Leap 5.0.3 release](https://github.com/AntelopeIO/leap/releases/tag/v5.0.3)
-* [Leap 5.0.3 net plugin connection-status fields](https://github.com/AntelopeIO/leap/blob/v5.0.3/plugins/net_plugin/include/eosio/net_plugin/net_plugin.hpp)
-* [SOCKS5: RFC 1928](https://www.rfc-editor.org/rfc/rfc1928)
-* [SOCKS username/password authentication: RFC 1929](https://www.rfc-editor.org/rfc/rfc1929)
-
+- [XPR Mainnet operator guide](https://github.com/XPRNetwork/xpr.start)
+- [XPR Testnet operator guide](https://github.com/XPRNetwork/xpr-testnet.start)
+- [Antelope Leap 5.0.3 release](https://github.com/AntelopeIO/leap/releases/tag/v5.0.3)
+- [Leap 5.0.3 net plugin connection-status fields](https://github.com/AntelopeIO/leap/blob/v5.0.3/plugins/net_plugin/include/eosio/net_plugin/net_plugin.hpp)
+- [SOCKS5: RFC 1928](https://www.rfc-editor.org/rfc/rfc1928)
+- [SOCKS username/password authentication: RFC 1929](https://www.rfc-editor.org/rfc/rfc1929)
