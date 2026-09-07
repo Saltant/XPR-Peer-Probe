@@ -1674,7 +1674,6 @@ def execute(args: argparse.Namespace) -> int:
         (run_dir / 'peers.json').write_text(json.dumps(peers, indent=2) + '\n')
         write_reports(run_dir, report, args)
         say(f'Reports for this run: {run_dir / "results"}')
-        say('WARNING: isolated files/ports do not isolate CPU, RAM, I/O or bandwidth from a production node.')
         if args.keep_temp:
             say('WARNING: --keep-temp retains EVERY sample database; budget disk accordingly.')
         node = Nodeos(executable, args, run_dir)
