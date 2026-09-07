@@ -46,7 +46,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
-VERSION = "2.0.0-rc1"
+VERSION = "2.0.0-rc2"
 GIB = 1024 ** 3
 SCRIPT_DIR = Path(__file__).resolve().parent
 LEAP_VERSION = "5.0.3"  # Explicitly pinned; never install GitHub's arbitrary 'latest'.
@@ -99,6 +99,12 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(4 * 1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def extract_semver(text: str) -> str | None:
+    """Return the first X.Y.Z semantic version from nodeos version output."""
+    match = re.search(r'(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)', text)
+    return '.'.join(match.groups()) if match else None
 
 
 def atomic_json(path: Path, value: Any) -> None:
@@ -708,8 +714,14 @@ def ensure_nodeos(root: Path, args: argparse.Namespace) -> tuple[Path, str]:
     if result.returncode:
         raise ProbeError(f'nodeos cannot execute: {result.stdout[-2000:]}')
     version = result.stdout.strip()
-    if not re.search(r'\b5\.0\.3\b', version):
-        say(f'WARNING: this probe was designed around Leap 5.0.3; selected version: {version}')
+    # --full-version normally returns a build suffix, e.g.
+    # v5.0.3-d133c6413ce8ce2e96096a0513ec25b4a8dbe837. Compare the
+    # semantic version, not the complete build string. A leading 'v' is not a
+    # regex word boundary, so the previous \b5\.0\.3\b check incorrectly
+    # warned for the normal official version string.
+    selected_semver = extract_semver(version)
+    if selected_semver != LEAP_VERSION:
+        say(f'WARNING: this probe was designed around Leap {LEAP_VERSION}; selected version: {version}')
     help_result = run_command([str(candidate), '--help'])
     for option in ('--snapshot', '--data-dir', '--config-dir'):
         if help_result.returncode or option not in help_result.stdout:
@@ -1016,7 +1028,11 @@ plugin = eosio::net_api_plugin
             raw = response.read(4 * 1024 ** 2 + 1)
             if len(raw) > 4 * 1024 ** 2:
                 raise ProbeError('Unexpectedly large local nodeos API response.')
-            if response.status != 200:
+            # Leap's HTTP plugin may return any successful 2xx status for local
+            # plugin RPCs. In particular, Leap 5.0.3 can return HTTP 201 for
+            # /v1/net/connections with a perfectly valid JSON body. Treat the
+            # whole 2xx class as success instead of requiring exactly HTTP 200.
+            if not 200 <= response.status < 300:
                 raise ProbeError(f'Local RPC {route}: HTTP {response.status}: {raw[:1200]!r}')
             return json.loads(raw) if raw else None
         except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
