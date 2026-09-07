@@ -6,7 +6,7 @@ XPR Peer Probe starts an isolated diagnostic `nodeos`, restores a snapshot, chec
 
 Each endpoint starts from the **same snapshot within a run**. Production configuration, keys, services and data directories are not edited.
 
-> **Release candidate: `2.0.0-rc1`.** The earlier v1.5 workflow was exercised by operators with Leap 5.0.3. This refactored version has automated local tests, including a mock nodeos and SOCKS5 server; it still needs a real-node smoke test before being tagged as a stable release.
+> **Release candidate: `2.0.0-rc3`.** The refactored probe has automated local tests and has also been exercised against a real XPR Testnet node using Leap 5.0.3. `rc3` keeps the same probe methodology while making the console output compact and removing version-string gating for compatible `nodeos` builds.
 
 ## Quick start
 
@@ -18,6 +18,15 @@ Download or clone this repository, then run commands from its directory.
 python3 xpr_peer_probe.py --network mainnet --check
 python3 xpr_peer_probe.py --network mainnet
 ```
+
+Use a specific Antelope/Leap-derived binary instead of the `nodeos` found in `PATH`:
+
+```bash
+./xpr_peer_probe.py --network mainnet --nodeos-bin /path/to/nodeos --check
+./xpr_peer_probe.py --network mainnet --nodeos-bin /path/to/nodeos
+```
+
+The probe **does not require a particular nodeos version string**. It prints the selected version and validates the capabilities it actually needs. If no usable binary is found, the interactive/setup flow can offer a private installation of the pinned reference Leap 5.0.3 build.
 
 ### A fresh Ubuntu host
 
@@ -50,7 +59,7 @@ The network selects its own **chain ID, snapshot source, peer file, ports, cache
 |---|---|
 | Operating system | Linux. Automated Leap installation is restricted to **Ubuntu 22.04/24.04, amd64**. Other Linux systems require a compatible manually installed nodeos. |
 | Python | **3.10+**, standard library only. No `pip install` step. |
-| Blockchain binary | A compatible Antelope **Leap `nodeos`**. The reference/pinned installer version is **5.0.3**, not an arbitrary latest release. `--nodeos-bin` selects another executable. |
+| Blockchain binary | A compatible Antelope/Leap-derived **`nodeos`** with snapshot restore, chain API and `net_api_plugin` support. The probe does **not** reject a binary by version string. The optional fallback installer is pinned to **Leap 5.0.3**; `--nodeos-bin` selects any explicit compatible executable. |
 | Network | Outbound P2P TCP; HTTPS for automatic downloads. An existing reachable SOCKS5 service is required only for relay mode. |
 | Disk | Default guard: **8 GiB free** before a restore and as a reserve during snapshot downloads. Allocate more for retained snapshots, repeated runs or `--keep-temp`. |
 | Memory | Default guard: **4 GiB available**, not merely installed. This is a preliminary safety check, **not a guarantee that any snapshot will fit**. Leave substantial additional headroom on production hosts. |
@@ -62,7 +71,9 @@ The network selects its own **chain ID, snapshot source, peer file, ports, cache
 
 ### Dependency installation and trust
 
-The optional installer downloads the official pinned `.deb`, verifies its detached OpenPGP signature in a **temporary keyring**, and uses `dpkg-deb -x` to extract it under `.xpr-peerprobe/tools/`. Package maintainer scripts are not executed. The existing system binary takes precedence unless `--nodeos-bin` is supplied.
+The optional installer downloads the official pinned Leap 5.0.3 `.deb`, verifies its detached OpenPGP signature in a **temporary keyring**, and uses `dpkg-deb -x` to extract it under `.xpr-peerprobe/tools/`. Package maintainer scripts are not executed. The existing system binary takes precedence unless `--nodeos-bin` is supplied.
+
+Version numbers are informational, not a compatibility gate. Custom Antelope-derived builds can be selected with `--nodeos-bin` as long as they expose the required nodeos options and runtime APIs. This only changes the **binary used by the probe**: the built-in network profiles, chain IDs, peer lists and snapshot sources in this repository remain XPR Mainnet/Testnet. A WAX/EOS/other-chain binary therefore does not automatically turn the XPR profiles into a profile for that chain.
 
 Maintainer keys are retrieved over HTTPS from the GitHub key URLs listed by the [XPR installation guide](https://github.com/XPRNetwork/xpr.start). This trusts those HTTPS/GitHub sources; it is **not an independently pinned trust root**. An independently obtained package checksum can additionally be supplied with `--nodeos-sha256`.
 
@@ -187,6 +198,12 @@ SOCKS5 applies to diagnostic P2P only. Snapshot/package downloads do not use thi
 
 Phase A is optional (`--with-phase-a`) and does not filter Phase B. The default Phase B already validates a real handshake and tests catch-up. Phase A may itself receive blocks while holding the connection; it is not a zero-traffic probe.
 
+### Console output
+
+Phase B uses a compact live table instead of printing several status lines per peer. In an interactive terminal, only the **current row** is redrawn while it moves through `RESTORE` → `HANDSHAKE` → `SYNC`; completed rows stay in place. During catch-up the current row also updates its blocks and blk/s values. When stdout is redirected to a file or pipe, the probe avoids terminal control sequences and prints one completed row per sample.
+
+The `test` column is the phase plus round number (`B1`, `B2`, `A1`, ...). Full reasons and diagnostic evidence are still written to `results.json`, CSV files and per-sample nodeos logs; the live table intentionally stays short. A sorted **Final ranking (Phase B)** is printed after the run. Resource availability is printed once during preflight instead of once for every peer unless a resource guard is actually triggered.
+
 ## Reports and safety
 
 ```text
@@ -233,7 +250,7 @@ Reports contain endpoint addresses, proxy address and local filesystem paths, bu
 | `--native-socks5 HOST:PORT`, `--compare` | Native relay or paired path comparison. |
 | `--catchup-blocks 2000`, `--catchup-timeout 45` | Full target and timing budget. |
 | `--rounds 2`, `--pause 2` | Repeat tests without rapid reconnect loops. |
-| `--nodeos-bin PATH`, `--install-deps` | Select binary or offer private installation. |
+| `--nodeos-bin PATH`, `--install-deps` | Select any explicit compatible nodeos binary, or offer the private pinned Leap 5.0.3 fallback when none is available. |
 | `--workspace PATH` | Put cache and reports on a disk of your choice. |
 | `--http-port`, `--p2p-port`, `--relay-port` | Override occupied diagnostic ports. |
 
